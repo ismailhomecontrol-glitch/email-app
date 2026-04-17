@@ -6,12 +6,16 @@ const Dashboard = () => {
   const [stats, setStats] = useState({ total: 0, sent: 0, pending: 0 });
   const [contacts, setContacts] = useState<any[]>([]);
   const [isUploading, setIsUploading] = useState(false);
+  const [isSending, setIsSending] = useState(false);
 
   useEffect(() => {
     fetchData();
-    const interval = setInterval(fetchData, 10000);
+    const interval = setInterval(() => {
+      fetchData();
+      if (!config.isPaused) handleSendNext();
+    }, 15000); // Check and send every 15s if not paused
     return () => clearInterval(interval);
-  }, []);
+  }, [config.isPaused]);
 
   const fetchData = async () => {
     try {
@@ -22,6 +26,23 @@ const Dashboard = () => {
       if (data.contacts) setContacts(data.contacts);
     } catch (error) {
       console.error("Error fetching data:", error);
+    }
+  };
+
+  const handleSendNext = async () => {
+    if (isSending) return;
+    setIsSending(true);
+    try {
+      const response = await fetch('/api/send', { method: 'POST' });
+      const data = await response.json();
+      if (data.success) {
+        console.log("Email sent to:", data.contact);
+        fetchData();
+      }
+    } catch (error) {
+      console.error("Error sending email:", error);
+    } finally {
+      setIsSending(false);
     }
   };
 
@@ -68,34 +89,9 @@ const Dashboard = () => {
       minHeight: '100vh',
       padding: '10px'
     }}>
-      {/* Mobile-Friendly Header */}
-      <nav style={{
-        display: 'flex',
-        justifyContent: 'space-around',
-        backgroundColor: '#fff',
-        padding: '15px',
-        borderRadius: '12px',
-        marginBottom: '15px',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
-      }}>
-        <button 
-          onClick={() => setView('stats')}
-          style={{ 
-            border: 'none', background: 'none', fontWeight: view === 'stats' ? 'bold' : 'normal',
-            color: view === 'stats' ? '#3b82f6' : '#6b7280'
-          }}
-        >
-          📊 Stats
-        </button>
-        <button 
-          onClick={() => setView('contacts')}
-          style={{ 
-            border: 'none', background: 'none', fontWeight: view === 'contacts' ? 'bold' : 'normal',
-            color: view === 'contacts' ? '#3b82f6' : '#6b7280'
-          }}
-        >
-          👥 Contacts
-        </button>
+      <nav style={navStyle}>
+        <button onClick={() => setView('stats')} style={view === 'stats' ? activeBtn : btn}>📊 Stats</button>
+        <button onClick={() => setView('contacts')} style={view === 'contacts' ? activeBtn : btn}>👥 Contacts</button>
       </nav>
 
       {view === 'stats' ? (
@@ -105,19 +101,25 @@ const Dashboard = () => {
             border: `2px solid ${config.isPaused ? '#fee2e2' : '#dcfce7'}`
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>
-                {config.isPaused ? '🔴 Paused' : '🟢 Running'}
-              </span>
-              <button 
-                onClick={toggleCampaign}
-                style={{
-                  padding: '10px 20px', borderRadius: '8px', border: 'none',
-                  backgroundColor: config.isPaused ? '#10b981' : '#ef4444',
-                  color: '#fff', fontWeight: 'bold', cursor: 'pointer'
-                }}
-              >
-                {config.isPaused ? 'Start' : 'Stop'}
-              </button>
+              <div>
+                <span style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>
+                  {config.isPaused ? '🔴 Paused' : '🟢 Running'}
+                </span>
+                {isSending && <div style={{ fontSize: '0.8rem', color: '#3b82f6' }}>Sending email...</div>}
+              </div>
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <button onClick={handleSendNext} disabled={isSending} style={secondaryBtn}>Test Send</button>
+                <button 
+                  onClick={toggleCampaign}
+                  style={{
+                    padding: '10px 20px', borderRadius: '8px', border: 'none',
+                    backgroundColor: config.isPaused ? '#10b981' : '#ef4444',
+                    color: '#fff', fontWeight: 'bold', cursor: 'pointer'
+                  }}
+                >
+                  {config.isPaused ? 'Start' : 'Stop'}
+                </button>
+              </div>
             </div>
           </div>
 
@@ -129,18 +131,16 @@ const Dashboard = () => {
           </div>
 
           <div style={{ backgroundColor: '#fff', padding: '20px', borderRadius: '16px' }}>
-            <h3 style={{ margin: '0 0 10px 0' }}>Upload List</h3>
+            <h3 style={{ margin: '0 0 10px 0' }}>Upload List (.txt)</h3>
             <input type="file" accept=".txt" onChange={handleFileUpload} disabled={isUploading} style={{ width: '100%' }} />
+            {isUploading && <p>Uploading...</p>}
           </div>
         </div>
       ) : (
-        <div style={{ maxWidth: '600px', margin: '0 auto', backgroundColor: '#fff', borderRadius: '16px', overflow: 'hidden' }}>
+        <div style={{ maxWidth: '600px', margin: '0 auto', backgroundColor: '#fff', borderRadius: '16px', overflow: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead style={{ backgroundColor: '#f9fafb' }}>
-              <tr>
-                <th style={thStyle}>Email</th>
-                <th style={thStyle}>Status</th>
-              </tr>
+              <tr><th style={thStyle}>Email</th><th style={thStyle}>Status</th></tr>
             </thead>
             <tbody>
               {contacts.map((c, i) => (
@@ -151,9 +151,7 @@ const Dashboard = () => {
                       padding: '2px 8px', borderRadius: '12px', fontSize: '0.8rem',
                       backgroundColor: c.status === 'sent' ? '#dcfce7' : '#f3f4f6',
                       color: c.status === 'sent' ? '#166534' : '#6b7280'
-                    }}>
-                      {c.status}
-                    </span>
+                    }}>{c.status}</span>
                   </td>
                 </tr>
               ))}
@@ -165,10 +163,11 @@ const Dashboard = () => {
   );
 };
 
-const cardStyle = {
-  backgroundColor: '#fff', padding: '15px', borderRadius: '12px', textAlign: 'center' as const,
-  boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
-};
+const navStyle = { display: 'flex', justifyContent: 'space-around', backgroundColor: '#fff', padding: '15px', borderRadius: '12px', marginBottom: '15px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' };
+const btn = { border: 'none', background: 'none', color: '#6b7280', fontSize: '1rem' };
+const activeBtn = { ...btn, fontWeight: 'bold', color: '#3b82f6' };
+const secondaryBtn = { padding: '8px 12px', borderRadius: '6px', border: '1px solid #d1d5db', backgroundColor: '#fff', cursor: 'pointer', fontSize: '0.9rem' };
+const cardStyle = { backgroundColor: '#fff', padding: '15px', borderRadius: '12px', textAlign: 'center' as const, boxShadow: '0 1px 2px rgba(0,0,0,0.05)' };
 const thStyle = { padding: '12px', textAlign: 'left' as const, fontSize: '0.85rem', color: '#6b7280' };
 const tdStyle = { padding: '12px', fontSize: '0.9rem' };
 

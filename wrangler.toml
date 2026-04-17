@@ -3,6 +3,8 @@ pages_build_output_dir = "dist"
 
 [vars]
 # GEMINI_API_KEY will be set via Cloudflare dashboard or Wrangler Secret
+# RESEND_API_KEY = "re_your_api_key"
+# FROM_EMAIL = "onboarding@resend.dev" # Change this to your verified domain email
 
 [[d1_databases]]
 binding = "DB"
