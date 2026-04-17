@@ -3,7 +3,7 @@ export const onRequestGet = async (context: any) => {
   const db = env.DB;
 
   try {
-    const { results: contacts } = await db.prepare("SELECT * FROM contacts").all();
+    const { results: contacts } = await db.prepare("SELECT * FROM contacts ORDER BY added_at ASC").all();
     const { results: config } = await db.prepare("SELECT * FROM campaign_config WHERE id = 'settings'").all();
     
     const stats = {
@@ -26,7 +26,7 @@ export const onRequestPost = async (context: any) => {
   const { emails } = await request.json();
 
   try {
-    const stmt = db.prepare("INSERT OR IGNORE INTO contacts (email, name, status) VALUES (?, ?, ?)");
+    const stmt = db.prepare("INSERT OR IGNORE INTO contacts (email, name, status, added_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP)");
     const batch = emails.map((email: string) => stmt.bind(email, email.split('@')[0], 'pending'));
     await db.batch(batch);
 

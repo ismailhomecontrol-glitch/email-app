@@ -1,24 +1,27 @@
 import React, { useState, useEffect } from 'react';
 
 const Dashboard = () => {
+  const [view, setView] = useState<'stats' | 'contacts'>('stats');
   const [config, setConfig] = useState({ dailyLimit: 20, isPaused: true });
   const [stats, setStats] = useState({ total: 0, sent: 0, pending: 0 });
+  const [contacts, setContacts] = useState<any[]>([]);
   const [isUploading, setIsUploading] = useState(false);
 
   useEffect(() => {
-    fetchStats();
-    const interval = setInterval(fetchStats, 5000); // Poll every 5 seconds
+    fetchData();
+    const interval = setInterval(fetchData, 10000);
     return () => clearInterval(interval);
   }, []);
 
-  const fetchStats = async () => {
+  const fetchData = async () => {
     try {
       const response = await fetch('/api/contacts');
       const data = await response.json();
       if (data.stats) setStats(data.stats);
       if (data.config) setConfig(data.config);
+      if (data.contacts) setContacts(data.contacts);
     } catch (error) {
-      console.error("Error fetching stats:", error);
+      console.error("Error fetching data:", error);
     }
   };
 
@@ -36,162 +39,137 @@ const Dashboard = () => {
     }
   };
 
-  const updateLimit = async (newLimit: number) => {
-    try {
-      await fetch('/api/config', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ dailyLimit: newLimit }),
-      });
-      setConfig({ ...config, dailyLimit: newLimit });
-    } catch (error) {
-      console.error("Error updating limit:", error);
-    }
-  };
-
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
-
     setIsUploading(true);
     const text = await file.text();
     const emails = text.split(/\r?\n/).map(e => e.trim()).filter(e => e.includes('@'));
-
     try {
-      const response = await fetch('/api/contacts', {
+      await fetch('/api/contacts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ emails }),
       });
-      const data = await response.json();
-      alert(`Successfully added ${data.count} emails.`);
-      fetchStats();
+      fetchData();
+      alert("Upload complete!");
     } catch (error) {
-      console.error("Error uploading emails:", error);
-      alert("Error uploading emails. Check console.");
+      alert("Upload failed.");
     } finally {
       setIsUploading(false);
-      event.target.value = ''; // Reset input
+      event.target.value = '';
     }
   };
 
   return (
     <div style={{ 
-      padding: '40px', 
-      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-      maxWidth: '800px',
-      margin: '0 auto',
-      backgroundColor: '#f9fafb',
-      minHeight: '100vh'
+      fontFamily: '-apple-system, system-ui, sans-serif',
+      backgroundColor: '#f3f4f6',
+      minHeight: '100vh',
+      padding: '10px'
     }}>
-      <div style={{ 
-        backgroundColor: '#ffffff', 
-        padding: '30px', 
-        borderRadius: '12px', 
-        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+      {/* Mobile-Friendly Header */}
+      <nav style={{
+        display: 'flex',
+        justifyContent: 'space-around',
+        backgroundColor: '#fff',
+        padding: '15px',
+        borderRadius: '12px',
+        marginBottom: '15px',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
       }}>
-        <h1 style={{ marginTop: 0, color: '#111827' }}>Campaign Dashboard (D1 Cloudflare)</h1>
-        
-        <div style={{ 
-          display: 'flex', 
-          alignItems: 'center', 
-          gap: '15px', 
-          marginBottom: '30px',
-          padding: '15px',
-          backgroundColor: config.isPaused ? '#fee2e2' : '#dcfce7',
-          borderRadius: '8px'
-        }}>
+        <button 
+          onClick={() => setView('stats')}
+          style={{ 
+            border: 'none', background: 'none', fontWeight: view === 'stats' ? 'bold' : 'normal',
+            color: view === 'stats' ? '#3b82f6' : '#6b7280'
+          }}
+        >
+          📊 Stats
+        </button>
+        <button 
+          onClick={() => setView('contacts')}
+          style={{ 
+            border: 'none', background: 'none', fontWeight: view === 'contacts' ? 'bold' : 'normal',
+            color: view === 'contacts' ? '#3b82f6' : '#6b7280'
+          }}
+        >
+          👥 Contacts
+        </button>
+      </nav>
+
+      {view === 'stats' ? (
+        <div style={{ maxWidth: '600px', margin: '0 auto' }}>
           <div style={{ 
-            width: '12px', 
-            height: '12px', 
-            borderRadius: '50%', 
-            backgroundColor: config.isPaused ? '#ef4444' : '#22c55e'
-          }} />
-          <span style={{ 
-            fontWeight: 'bold', 
-            color: config.isPaused ? '#991b1b' : '#166534',
-            fontSize: '1.1rem'
+            backgroundColor: '#fff', padding: '20px', borderRadius: '16px', marginBottom: '15px',
+            border: `2px solid ${config.isPaused ? '#fee2e2' : '#dcfce7'}`
           }}>
-            Status: {config.isPaused ? 'Paused' : 'Running'}
-          </span>
-          <button 
-            onClick={toggleCampaign}
-            style={{
-              marginLeft: 'auto',
-              padding: '8px 16px',
-              backgroundColor: config.isPaused ? '#22c55e' : '#ef4444',
-              color: 'white',
-              border: 'none',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              fontWeight: '600'
-            }}
-          >
-            {config.isPaused ? 'Start Campaign' : 'Stop Campaign'}
-          </button>
-        </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>
+                {config.isPaused ? '🔴 Paused' : '🟢 Running'}
+              </span>
+              <button 
+                onClick={toggleCampaign}
+                style={{
+                  padding: '10px 20px', borderRadius: '8px', border: 'none',
+                  backgroundColor: config.isPaused ? '#10b981' : '#ef4444',
+                  color: '#fff', fontWeight: 'bold', cursor: 'pointer'
+                }}
+              >
+                {config.isPaused ? 'Start' : 'Stop'}
+              </button>
+            </div>
+          </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px', marginBottom: '30px' }}>
-          <StatCard label="Total Emails" value={stats.total} color="#3b82f6" />
-          <StatCard label="Emails Sent" value={stats.sent} color="#10b981" />
-          <StatCard label="Remaining" value={stats.pending} color="#f59e0b" />
-        </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '15px' }}>
+            <div style={cardStyle}><small>Total</small><br/><b>{stats.total}</b></div>
+            <div style={cardStyle}><small>Sent</small><br/><b>{stats.sent}</b></div>
+            <div style={cardStyle}><small>Remaining</small><br/><b>{stats.pending}</b></div>
+            <div style={cardStyle}><small>Daily Limit</small><br/><b>{config.dailyLimit}</b></div>
+          </div>
 
-        <div style={{ marginBottom: '30px', borderTop: '1px solid #e5e7eb', paddingTop: '20px' }}>
-          <h3 style={{ marginTop: 0 }}>Campaign Settings</h3>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <label style={{ color: '#4b5563' }}>Daily Limit: </label>
-            <input 
-              type="number" 
-              value={config.dailyLimit} 
-              onChange={(e) => updateLimit(Number(e.target.value))} 
-              style={{
-                padding: '8px',
-                borderRadius: '6px',
-                border: '1px solid #d1d5db',
-                width: '80px'
-              }}
-            />
+          <div style={{ backgroundColor: '#fff', padding: '20px', borderRadius: '16px' }}>
+            <h3 style={{ margin: '0 0 10px 0' }}>Upload List</h3>
+            <input type="file" accept=".txt" onChange={handleFileUpload} disabled={isUploading} style={{ width: '100%' }} />
           </div>
         </div>
-
-        <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: '20px' }}>
-          <h3 style={{ marginTop: 0 }}>Upload Email List (.txt)</h3>
-          <p style={{ fontSize: '0.9rem', color: '#6b7280', marginBottom: '15px' }}>
-            One email per line. Only valid emails will be imported.
-          </p>
-          <input 
-            type="file" 
-            accept=".txt" 
-            onChange={handleFileUpload} 
-            disabled={isUploading}
-            style={{
-              display: 'block',
-              width: '100%',
-              padding: '10px',
-              border: '2px dashed #d1d5db',
-              borderRadius: '8px',
-              cursor: isUploading ? 'not-allowed' : 'pointer'
-            }}
-          />
-          {isUploading && <p style={{ color: '#3b82f6', marginTop: '10px' }}>Uploading emails...</p>}
+      ) : (
+        <div style={{ maxWidth: '600px', margin: '0 auto', backgroundColor: '#fff', borderRadius: '16px', overflow: 'hidden' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead style={{ backgroundColor: '#f9fafb' }}>
+              <tr>
+                <th style={thStyle}>Email</th>
+                <th style={thStyle}>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {contacts.map((c, i) => (
+                <tr key={i} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                  <td style={tdStyle}>{c.email}</td>
+                  <td style={tdStyle}>
+                    <span style={{ 
+                      padding: '2px 8px', borderRadius: '12px', fontSize: '0.8rem',
+                      backgroundColor: c.status === 'sent' ? '#dcfce7' : '#f3f4f6',
+                      color: c.status === 'sent' ? '#166534' : '#6b7280'
+                    }}>
+                      {c.status}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
-      </div>
+      )}
     </div>
   );
 };
 
-const StatCard = ({ label, value, color }: { label: string, value: number, color: string }) => (
-  <div style={{ 
-    backgroundColor: '#ffffff', 
-    padding: '20px', 
-    borderRadius: '10px', 
-    border: `1px solid ${color}44`,
-    textAlign: 'center'
-  }}>
-    <div style={{ fontSize: '0.9rem', color: '#6b7280', marginBottom: '5px' }}>{label}</div>
-    <div style={{ fontSize: '1.8rem', fontWeight: 'bold', color: color }}>{value}</div>
-  </div>
-);
+const cardStyle = {
+  backgroundColor: '#fff', padding: '15px', borderRadius: '12px', textAlign: 'center' as const,
+  boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+};
+const thStyle = { padding: '12px', textAlign: 'left' as const, fontSize: '0.85rem', color: '#6b7280' };
+const tdStyle = { padding: '12px', fontSize: '0.9rem' };
 
 export default Dashboard;
