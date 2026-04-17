@@ -17,6 +17,16 @@ const Dashboard = () => {
     fetchConfig();
   }, []);
 
+  const generateEmail = async (contactName: string) => {
+    const response = await fetch('/api/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ contactName }),
+    });
+    const data = await response.json();
+    return data;
+  };
+
   const toggleCampaign = async () => {
     const newState = !config.isPaused;
     await updateDoc(doc(db, 'campaign_config', 'settings'), { isPaused: newState });

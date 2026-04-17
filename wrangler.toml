@@ -1,0 +1,6 @@
+name = "email-app"
+pages_build_output_dir = "dist"
+
+[vars]
+# You will set this via Cloudflare dashboard or Wrangler
+# GEMINI_API_KEY = "your-api-key"

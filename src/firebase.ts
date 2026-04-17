@@ -10,10 +10,5 @@ const firebaseConfig = {
   appId: "placeholder-app"
 };
 
-let app;
-try {
-  app = initializeApp(firebaseConfig);
-} catch (e) {
-  console.error("Firebase initialization failed:", e);
-}
-export const db = app ? getFirestore(app) : null;
+const app = initializeApp(firebaseConfig);
+export const db = getFirestore(app);
