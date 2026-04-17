@@ -2,5 +2,9 @@ name = "email-app"
 pages_build_output_dir = "dist"
 
 [vars]
-# You will set this via Cloudflare dashboard or Wrangler
-# GEMINI_API_KEY = "your-api-key"
+# GEMINI_API_KEY will be set via Cloudflare dashboard or Wrangler Secret
+
+[[d1_databases]]
+binding = "DB"
+database_name = "email-db"
+database_id = "535309a9-50cc-4666-bb9f-572f95448c4e"
