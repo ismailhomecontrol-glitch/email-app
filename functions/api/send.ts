@@ -20,7 +20,7 @@ export const onRequestPost = async (context: any) => {
 
     // 3. Generate Email with Gemini
     const genAI = new GoogleGenerativeAI(geminiKey);
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash-latest' });
     const prompt = `
       Write a short, conversational, and personalized email inviting a music creator named ${nextContact.name} to sign up for songupai.com.
       The goal is to get them to buy a subscription.
