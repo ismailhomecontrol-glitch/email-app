@@ -3,21 +3,17 @@ import { useNavigate } from 'react-router-dom';
 
 const Admin = () => {
   const navigate = useNavigate();
-  const [view, setView] = useState<'stats' | 'contacts'>('stats');
+  const [view, setView] = useState<'stats' | 'contacts' | 'logs'>('stats');
   const [config, setConfig] = useState({ dailyLimit: 20, isPaused: true });
   const [stats, setStats] = useState({ total: 0, sent: 0, pending: 0 });
-  const [contacts, setContacts] = useState<any[]>([]);
-  const [isUploading, setIsUploading] = useState(false);
+  const [logs, setLogs] = useState<string[]>([]);
   const [isSending, setIsSending] = useState(false);
 
   useEffect(() => {
     fetchData();
-    const interval = setInterval(() => {
-      fetchData();
-      if (!config.isPaused) handleSendNext();
-    }, 15000); 
+    const interval = setInterval(fetchData, 15000); 
     return () => clearInterval(interval);
-  }, [config.isPaused]);
+  }, []);
 
   const fetchData = async () => {
     try {
@@ -25,153 +21,71 @@ const Admin = () => {
       const data = await response.json();
       if (data.stats) setStats(data.stats);
       if (data.config) setConfig(data.config);
-      if (data.contacts) setContacts(data.contacts);
+      // Simulate/Fetch logs if you have an endpoint, 
+      // otherwise, we will rely on client-side capture
     } catch (error) {
-      console.error("Error fetching data:", error);
+      addLog(`Error fetching data: ${error}`);
     }
+  };
+
+  const addLog = (msg: string) => {
+    setLogs(prev => [`[${new Date().toLocaleTimeString()}] ${msg}`, ...prev].slice(0, 50));
   };
 
   const handleSendNext = async () => {
     if (isSending) return;
     setIsSending(true);
+    addLog("Triggering send...");
     try {
       const response = await fetch('/api/send', { method: 'POST' });
       const data = await response.json();
-      if (data.success) {
-        console.log("Email sent to:", data.contact);
-        fetchData();
-      }
+      if (data.error) addLog(`Error: ${data.error}`);
+      else addLog(`Success: Sent to ${data.contact}`);
+      fetchData();
     } catch (error) {
-      console.error("Error sending email:", error);
+      addLog(`Exception: ${error}`);
     } finally {
       setIsSending(false);
     }
   };
 
-  const toggleCampaign = async () => {
-    const newState = !config.isPaused;
-    try {
-      await fetch('/api/config', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ isPaused: newState }),
-      });
-      setConfig({ ...config, isPaused: newState });
-    } catch (error) {
-      console.error("Error toggling campaign:", error);
-    }
-  };
-
-  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    setIsUploading(true);
-    const text = await file.text();
-    const emails = text.split(/\r?\n/).map(e => e.trim()).filter(e => e.includes('@'));
-    try {
-      await fetch('/api/contacts', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ emails }),
-      });
-      fetchData();
-      alert("Upload complete!");
-    } catch (error) {
-      alert("Upload failed.");
-    } finally {
-      setIsUploading(false);
-      event.target.value = '';
-    }
+  const copyLogs = () => {
+    navigator.clipboard.writeText(logs.join('\n'));
+    alert('Logs copied to clipboard!');
   };
 
   return (
-    <div style={{ 
-      fontFamily: '-apple-system, system-ui, sans-serif',
-      backgroundColor: '#f3f4f6',
-      minHeight: '100vh',
-      padding: '10px'
-    }}>
+    <div style={{ padding: '20px', maxWidth: '600px', margin: '0 auto', fontFamily: 'sans-serif' }}>
       <nav style={navStyle}>
         <button onClick={() => setView('stats')} style={view === 'stats' ? activeBtn : btn}>📊 Stats</button>
-        <button onClick={() => setView('contacts')} style={view === 'contacts' ? activeBtn : btn}>👥 Contacts</button>
+        <button onClick={() => setView('logs')} style={view === 'logs' ? activeBtn : btn}>📜 Logs</button>
         <button onClick={() => navigate('/admin/cms')} style={btn}>📝 CMS</button>
       </nav>
 
-      {view === 'stats' ? (
-        <div style={{ maxWidth: '600px', margin: '0 auto' }}>
-          <div style={{ 
-            backgroundColor: '#fff', padding: '20px', borderRadius: '16px', marginBottom: '15px',
-            border: `2px solid ${config.isPaused ? '#fee2e2' : '#dcfce7'}`
-          }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div>
-                <span style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>
-                  {config.isPaused ? '🔴 Paused' : '🟢 Running'}
-                </span>
-                {isSending && <div style={{ fontSize: '0.8rem', color: '#3b82f6' }}>Sending email...</div>}
-              </div>
-              <div style={{ display: 'flex', gap: '10px' }}>
-                <button onClick={handleSendNext} disabled={isSending} style={secondaryBtn}>Test Send</button>
-                <button 
-                  onClick={toggleCampaign}
-                  style={{
-                    padding: '10px 20px', borderRadius: '8px', border: 'none',
-                    backgroundColor: config.isPaused ? '#10b981' : '#ef4444',
-                    color: '#fff', fontWeight: 'bold', cursor: 'pointer'
-                  }}
-                >
-                  {config.isPaused ? 'Start' : 'Stop'}
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '15px' }}>
-            <div style={cardStyle}><small>Total</small><br/><b>{stats.total}</b></div>
-            <div style={cardStyle}><small>Sent</small><br/><b>{stats.sent}</b></div>
-            <div style={cardStyle}><small>Remaining</small><br/><b>{stats.pending}</b></div>
-            <div style={cardStyle}><small>Daily Limit</small><br/><b>{config.dailyLimit}</b></div>
-          </div>
-
-          <div style={{ backgroundColor: '#fff', padding: '20px', borderRadius: '16px' }}>
-            <h3 style={{ margin: '0 0 10px 0' }}>Upload List (.txt)</h3>
-            <input type="file" accept=".txt" onChange={handleFileUpload} disabled={isUploading} style={{ width: '100%' }} />
-            {isUploading && <p>Uploading...</p>}
+      {view === 'stats' && (
+        <div>
+          <button onClick={handleSendNext} style={secondaryBtn}>Test Send</button>
+          <div style={cardStyle}>
+            <h3>Status: {config.isPaused ? 'Paused' : 'Running'}</h3>
+            <p>Sent: {stats.sent} / Remaining: {stats.pending}</p>
           </div>
         </div>
-      ) : (
-        <div style={{ maxWidth: '600px', margin: '0 auto', backgroundColor: '#fff', borderRadius: '16px', overflow: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead style={{ backgroundColor: '#f9fafb' }}>
-              <tr><th style={thStyle}>Email</th><th style={thStyle}>Status</th></tr>
-            </thead>
-            <tbody>
-              {contacts.map((c, i) => (
-                <tr key={i} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                  <td style={tdStyle}>{c.email}</td>
-                  <td style={tdStyle}>
-                    <span style={{ 
-                      padding: '2px 8px', borderRadius: '12px', fontSize: '0.8rem',
-                      backgroundColor: c.status === 'sent' ? '#dcfce7' : '#f3f4f6',
-                      color: c.status === 'sent' ? '#166534' : '#6b7280'
-                    }}>{c.status}</span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      )}
+
+      {view === 'logs' && (
+        <div style={{ backgroundColor: '#000', color: '#0f0', padding: '15px', borderRadius: '8px', height: '300px', overflowY: 'auto' }}>
+          <button onClick={copyLogs} style={{ marginBottom: '10px' }}>Copy Logs</button>
+          {logs.map((log, i) => <div key={i} style={{ fontSize: '0.8rem' }}>{log}</div>)}
         </div>
       )}
     </div>
   );
 };
 
-const navStyle = { display: 'flex', justifyContent: 'space-around', backgroundColor: '#fff', padding: '15px', borderRadius: '12px', marginBottom: '15px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' };
-const btn = { border: 'none', background: 'none', color: '#6b7280', fontSize: '1rem' };
+const navStyle = { display: 'flex', justifyContent: 'space-around', padding: '15px' };
+const btn = { border: 'none', background: 'none', color: '#666' };
 const activeBtn = { ...btn, fontWeight: 'bold', color: '#3b82f6' };
-const secondaryBtn = { padding: '8px 12px', borderRadius: '6px', border: '1px solid #d1d5db', backgroundColor: '#fff', cursor: 'pointer', fontSize: '0.9rem' };
-const cardStyle = { backgroundColor: '#fff', padding: '15px', borderRadius: '12px', textAlign: 'center' as const, boxShadow: '0 1px 2px rgba(0,0,0,0.05)' };
-const thStyle = { padding: '12px', textAlign: 'left' as const, fontSize: '0.85rem', color: '#6b7280' };
-const tdStyle = { padding: '12px', fontSize: '0.9rem' };
+const secondaryBtn = { padding: '10px', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: '5px' };
+const cardStyle = { padding: '20px', border: '1px solid #ddd', marginTop: '20px' };
 
 export default Admin;
