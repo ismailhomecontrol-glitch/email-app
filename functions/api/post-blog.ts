@@ -8,7 +8,7 @@ export const onRequestPost = async (context: any) => {
   try {
     // 1. Generate Blog Post
     const genAI = new GoogleGenerativeAI(geminiKey);
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash-latest' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
     const prompt = `
       Write a professional, comprehensive, and engaging blog post (at least 600 words) about SongUpAI.com, an AI-powered music promotion engine.
       Include sections: 
