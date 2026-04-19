@@ -21,8 +21,6 @@ const Admin = () => {
       const data = await response.json();
       if (data.stats) setStats(data.stats);
       if (data.config) setConfig(data.config);
-      // Simulate/Fetch logs if you have an endpoint, 
-      // otherwise, we will rely on client-side capture
     } catch (error) {
       addLog(`Error fetching data: ${error}`);
     }
@@ -49,9 +47,19 @@ const Admin = () => {
     }
   };
 
-  const copyLogs = () => {
-    navigator.clipboard.writeText(logs.join('\n'));
-    alert('Logs copied to clipboard!');
+  const toggleCampaign = async () => {
+    const newState = !config.isPaused;
+    addLog(`Setting campaign to: ${newState ? 'Paused' : 'Running'}`);
+    try {
+      await fetch('/api/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isPaused: newState }),
+      });
+      setConfig({ ...config, isPaused: newState });
+    } catch (error) {
+      addLog(`Error toggling campaign: ${error}`);
+    }
   };
 
   return (
@@ -63,10 +71,15 @@ const Admin = () => {
       </nav>
 
       {view === 'stats' && (
-        <div>
-          <button onClick={handleSendNext} style={secondaryBtn}>Test Send</button>
+        <div style={{ marginTop: '20px' }}>
           <div style={cardStyle}>
-            <h3>Status: {config.isPaused ? 'Paused' : 'Running'}</h3>
+            <h3>Campaign Status: {config.isPaused ? '🔴 Paused' : '🟢 Running'}</h3>
+            <button onClick={toggleCampaign} style={toggleBtn(config.isPaused)}>
+              {config.isPaused ? 'Start Campaign' : 'Stop Campaign'}
+            </button>
+            <button onClick={handleSendNext} disabled={isSending} style={secondaryBtn}>Test Send</button>
+          </div>
+          <div style={cardStyle}>
             <p>Sent: {stats.sent} / Remaining: {stats.pending}</p>
           </div>
         </div>
@@ -74,7 +87,7 @@ const Admin = () => {
 
       {view === 'logs' && (
         <div style={{ backgroundColor: '#000', color: '#0f0', padding: '15px', borderRadius: '8px', height: '300px', overflowY: 'auto' }}>
-          <button onClick={copyLogs} style={{ marginBottom: '10px' }}>Copy Logs</button>
+          <button onClick={() => setLogs([])} style={{ marginBottom: '10px' }}>Clear Logs</button>
           {logs.map((log, i) => <div key={i} style={{ fontSize: '0.8rem' }}>{log}</div>)}
         </div>
       )}
@@ -83,9 +96,10 @@ const Admin = () => {
 };
 
 const navStyle = { display: 'flex', justifyContent: 'space-around', padding: '15px' };
-const btn = { border: 'none', background: 'none', color: '#666' };
+const btn = { border: 'none', background: 'none', color: '#666', cursor: 'pointer' };
 const activeBtn = { ...btn, fontWeight: 'bold', color: '#3b82f6' };
-const secondaryBtn = { padding: '10px', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: '5px' };
-const cardStyle = { padding: '20px', border: '1px solid #ddd', marginTop: '20px' };
+const secondaryBtn = { padding: '10px', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: '5px', cursor: 'pointer', marginLeft: '10px' };
+const toggleBtn = (isPaused: boolean) => ({ padding: '10px', background: isPaused ? '#10b981' : '#ef4444', color: '#fff', border: 'none', borderRadius: '5px', cursor: 'pointer' });
+const cardStyle = { padding: '20px', border: '1px solid #ddd', marginTop: '20px', borderRadius: '8px' };
 
 export default Admin;
