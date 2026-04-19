@@ -7,7 +7,7 @@ export const onRequestPost = async (context: any) => {
 
   try {
     const genAI = new GoogleGenerativeAI(geminiKey);
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash-8b' });
     const prompt = `Write a professional blog post about SongUpAI.com. Return JSON: {"title": "...", "summary": "...", "body": "..."}`;
     
     const result = await model.generateContent(prompt);

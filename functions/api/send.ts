@@ -15,7 +15,7 @@ export const onRequestPost = async (context: any) => {
     if (!nextContact) return new Response(JSON.stringify({ error: "No more pending contacts" }), { status: 200, headers: {'Content-Type': 'application/json'} });
 
     const genAI = new GoogleGenerativeAI(geminiKey);
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash-8b' });
     const prompt = `Write a short, personalized email for ${nextContact.name} about SongUpAI. Return JSON: {"subject": "...", "body": "..."}`;
     
     const result = await model.generateContent(prompt);
