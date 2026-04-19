@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 const Admin = () => {
+  const navigate = useNavigate();
   const [view, setView] = useState<'stats' | 'contacts'>('stats');
   const [config, setConfig] = useState({ dailyLimit: 20, isPaused: true });
   const [stats, setStats] = useState({ total: 0, sent: 0, pending: 0 });
@@ -92,6 +94,7 @@ const Admin = () => {
       <nav style={navStyle}>
         <button onClick={() => setView('stats')} style={view === 'stats' ? activeBtn : btn}>📊 Stats</button>
         <button onClick={() => setView('contacts')} style={view === 'contacts' ? activeBtn : btn}>👥 Contacts</button>
+        <button onClick={() => navigate('/admin/cms')} style={btn}>📝 CMS</button>
       </nav>
 
       {view === 'stats' ? (
