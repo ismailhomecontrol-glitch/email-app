@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Home from './pages/Home';
 import AdminWrapper from './pages/AdminWrapper';
+import CMS from './pages/CMS';
 
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
   <React.StrictMode>
@@ -10,6 +11,7 @@ ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/admin" element={<AdminWrapper />} />
+        <Route path="/admin/cms" element={<CMS />} />
       </Routes>
     </BrowserRouter>
   </React.StrictMode>
